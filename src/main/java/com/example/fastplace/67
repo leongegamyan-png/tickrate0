@@ -1,0 +1,54 @@
+package com.example.delayremover;
+
+import net.minecraft.client.Minecraft;
+import net.minecraftforge.common.MinecraftForge;
+import net.minecraftforge.fml.common.Mod;
+import net.minecraftforge.fml.common.Mod.EventHandler;
+import net.minecraftforge.fml.common.event.FMLInitializationEvent;
+import net.minecraftforge.fml.common.eventhandler.SubscribeEvent;
+import net.minecraftforge.fml.common.gameevent.TickEvent;
+import java.lang.reflect.Field;
+
+@Mod(modid = ClickDelayRemover.MODID, version = ClickDelayRemover.VERSION, clientSideOnly = true)
+public class ClickDelayRemover {
+    public static final String MODID = "delayremover";
+    public static final String VERSION = "1.0";
+
+    private Field leftClickCounterField;
+
+    @EventHandler
+    public void init(FMLInitializationEvent event) {
+        MinecraftForge.EVENT_BUS.register(this);
+        setupReflection();
+    }
+
+    private void setupReflection() {
+        try {
+            // "leftClickCounter" — имя поля в среде разработки
+            // "field_71429_W" — SRG-имя поля для работы в реальной игре (.jar)
+            try {
+                leftClickCounterField = Minecraft.class.getDeclaredField("field_71429_W");
+            } catch (NoSuchFieldException e) {
+                leftClickCounterField = Minecraft.class.getDeclaredField("leftClickCounter");
+            }
+            leftClickCounterField.setAccessible(true);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    @SubscribeEvent
+    public void onClientTick(TickEvent.ClientTickEvent event) {
+        // Проверяем, что тик завершился и игрок находится в мире
+        if (event.phase == TickEvent.Phase.END && Minecraft.getMinecraft().thePlayer != null) {
+            try {
+                if (leftClickCounterField != null) {
+                    // Принудительно устанавливаем задержку в 0 каждый тик
+                    leftClickCounterField.setInt(Minecraft.getMinecraft(), 0);
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+    }
+}
